@@ -46,6 +46,7 @@ mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* top bar */
+.clock{font-variant-numeric:tabular-nums;font-size:13px;line-height:1.35;color:var(--muted);text-align:right;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card,transparent)}.clock b{display:block;font-size:17px;color:var(--ink);font-weight:600;letter-spacing:.02em}.upd{margin-top:8px;font-size:12px;color:var(--faint);text-align:center}
 .top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px;font-family:var(--f-display);letter-spacing:-.01em}
 .brand b{display:block;font-size:18px;line-height:1.2}
@@ -279,6 +280,7 @@ details.adv[open] summary::before{content:"–"}
 <div class="wrap">
   <header class="top">
     <div class="brand"><svg viewBox="0 0 120 120" width="44" height="44" aria-hidden="true"><path d="M42 38 L60 27 L78 38" fill="none" stroke="var(--lg2)" stroke-width="5" stroke-linejoin="miter"/><path d="M47 25 L60 17 L73 25" fill="none" stroke="var(--lg1)" stroke-width="5" stroke-linejoin="miter"/><path d="M53 13 L60 9 L67 13" fill="none" stroke="var(--ln2)" stroke-width="5" stroke-linejoin="miter"/><rect x="57" y="44" width="6" height="54" fill="var(--ln1)"/><rect x="14" y="50" width="92" height="3" fill="var(--ln1)"/><path d="M24 53L12 76H36Z" fill="none" stroke="var(--ln1)" stroke-width="2.6" stroke-linejoin="miter"/><path d="M96 53L84 76H108Z" fill="none" stroke="var(--ln1)" stroke-width="2.6" stroke-linejoin="miter"/><path d="M36 104l8-6 8 6 8-6 8 6 8-6 8 6" fill="none" stroke="var(--ln2)" stroke-width="2.8" stroke-linejoin="miter"/><path d="M36 113l8-6 8 6 8-6 8 6 8-6 8 6" fill="none" stroke="var(--ln2)" stroke-width="2.8" stroke-linejoin="miter"/><path d="M60 47l3.4 3.4L60 53.8l-3.4-3.4z" fill="var(--lgold)"/></svg><span><b>Bản đồ pháp lý dự án</b><small>AQUA LEGAL</small></span></div>
+    <div class="clock" id="clock" aria-live="off" title="Giờ Việt Nam"><b id="clkT">--:--:--</b><span id="clkD"></span></div>
     <div class="seg" role="group" aria-label="Cách tra cứu">
       <button id="modeJ" aria-pressed="true">Theo hành trình</button>
       <button id="modeF" aria-pressed="false">Theo lĩnh vực</button>
@@ -311,6 +313,7 @@ details.adv[open] summary::before{content:"–"}
   <main id="view" aria-live="polite"></main>
 
   <footer class="foot"><span class="sig">Website được xây dựng và biên soạn bởi <b>Vũ Quang Phát</b> · Pháp lý &amp; Phát triển dự án BĐS · © 2026</span><span id="footStat"></span><span class="note">Tóm tắt chỉ để định hướng. Đối chiếu văn bản gốc trước khi áp dụng.</span></footer>
+  <div class="upd" id="updLine"></div>
 </div>
 
 <div id="scrim" class="scrim" hidden></div>
@@ -729,12 +732,27 @@ function rowsToDocs(rows){
   });
   return out;
 }
+let UPD='14/10/2026 13:01 (bản dựng sẵn)';
+function showUpd(){const e=document.getElementById('updLine');if(e)e.textContent='Cập nhật dữ liệu lần cuối: '+UPD}
+function tickClock(){
+  try{const n=new Date(),o={timeZone:'Asia/Ho_Chi_Minh'};
+    const t=n.toLocaleTimeString('vi-VN',{...o,hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+    const w=n.toLocaleDateString('vi-VN',{...o,weekday:'long'});
+    const d=n.toLocaleDateString('vi-VN',{...o,day:'2-digit',month:'2-digit',year:'numeric'});
+    document.getElementById('clkT').textContent=t;
+    document.getElementById('clkD').textContent=w+', ngày '+d.split('/')[0]+' tháng '+d.split('/')[1]+' năm '+d.split('/')[2];
+  }catch(e){}
+}
+tickClock();setInterval(tickClock,1000);showUpd();
 async function loadSheet(){
   if(!SHEET_CSV_URL)return;
   try{
     const r=await fetch(SHEET_CSV_URL,{cache:'no-store'});
     if(!r.ok)throw new Error('http '+r.status);
-    const docs=rowsToDocs(parseCSV(await r.text()));
+    const grid=parseCSV(await r.text());
+    const mr=grid.find(x=>String(x[0]||'').trim()==='__CAPNHAT__');
+    if(mr&&String(mr[3]||'').trim()){UPD=String(mr[3]).trim();showUpd()}
+    const docs=rowsToDocs(grid);
     if(docs.length<(DATA.docs.length+DATA.proc.length)*0.5)throw new Error('bảng quá ít dòng');
     build(docs);
     const un=ALL.filter(d=>!d.tasks.length).length;
