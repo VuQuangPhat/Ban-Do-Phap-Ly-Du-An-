@@ -399,6 +399,22 @@ list.forEach(d=>{
   ALL.push(d);
 });
 byId=Object.fromEntries(ALL.map(d=>[d.id,d]));
+linkReplacements();
+}
+/* Suy ra "bị thay thế bởi" từ cột "Thay thế / sửa đổi" của chính Sheet:
+   văn bản mới ghi tên văn bản cũ nó thay thế; văn bản cũ ghi "bị thay thế bởi ..." thì đọc theo chiều xuôi. */
+function soKey(s){return String(s||'').toLowerCase().replace(/\s/g,'')}
+function soList(text){return (String(text||'').match(/\b\d{1,4}(?:\.\d+)?\/(?:\d{4}\/)?[A-ZĐa-zđ][A-ZĐa-zđ0-9\-]*(?:\/[A-ZĐ\-]+)?/g)||[]).filter(x=>/\d{4}|QH|NĐ|TT|NQ|QĐ/i.test(x))}
+function findBySo(so){const k=soKey(so);return ALL.find(x=>x.so&&soKey(x.so)===k)||ALL.find(x=>x.so&&(soKey(x.so).startsWith(k+'và')||soKey(x.so).startsWith(k+'(')))}
+function linkReplacements(){
+  ALL.forEach(d=>{d._by=[]});
+  const add=(target,src)=>{if(target&&src&&target!==src&&!target._by.includes(src))target._by.push(src)};
+  ALL.forEach(d=>{
+    const t=d.thaythe||'';if(!t)return;
+    const m=/(bị thay thế|được thay thế|được sửa đổi[^:]*|bị bãi bỏ)[^:]*?bởi/i.exec(t);
+    if(m){const after=t.slice(m.index+m[0].length);soList(after).forEach(so=>add(d,findBySo(so)));return}
+    soList(t).forEach(so=>add(findBySo(so),d));
+  });
 }
 build(DATA.docs.concat(DATA.proc));
 const cur=d=>d._st!=='expired';
@@ -468,8 +484,9 @@ const PILL={ok:['ok','Đang hiệu lực'],new:['new','Mới hiệu lực'],soon
 function pill(d){const k=d._st==='active'?'ok':d._st==='expired'?'old':d._st;return '<span class="pill '+PILL[k][0]+'">'+PILL[k][1]+'</span>'}
 const GL={'Luật':'L','Bộ luật':'BL','Nghị định':'NĐ','Thông tư':'TT','Thông tư liên tịch':'TTLT','Nghị quyết':'NQ','Quyết định':'QĐ','Công văn':'CV','Công điện':'CĐ','Quy chuẩn':'QC','Thủ tục':'TTHC'};
 function replDocs(d){
-  if(!d.thaybo)return [];
-  return d.thaybo.split(/[;\n]+/).map(x=>x.trim()).filter(Boolean).map(so=>{const k=so.toLowerCase().replace(/\s/g,'');return {so,doc:ALL.find(x=>x.so&&x.so.toLowerCase().replace(/\s/g,'')===k)}});
+  const out=(d._by||[]).map(x=>({so:x.so,doc:x}));
+  (d.thaybo||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(so=>{if(!out.some(o=>soKey(o.so)===soKey(so)))out.push({so,doc:findBySo(so)})});
+  return out;
 }
 function rowHtml(d,showTags){
   const rp=d._st==='expired'?replDocs(d):[];
@@ -608,7 +625,7 @@ function openDoc(id){
   '<div class="d-head"><div><div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+pill(d)+'<span class="sub" style="margin:0"><span class="no">'+esc(numLine(d))+'</span></span></div><h2 id="dTitle">'+esc(d._h)+'</h2></div><button class="d-close" id="dClose" aria-label="Đóng">×</button></div>'+
   '<div class="d-body">'+
   '<div class="d-actions"><a class="btn primary" href="'+esc(d.link)+'" target="_blank" rel="noopener">Xem văn bản <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/></svg></a><button class="btn" id="cpLink">Sao chép link</button></div>'+
-  (d.thaybo?'<div class="note"><b>'+(d._st==='expired'?'Đã hết hiệu lực.':'Có văn bản thay thế.')+'</b> Văn bản thay thế: '+replDocs(d).map(x=>x.doc?'<button class="tag" style="border:0;cursor:pointer" data-open="'+esc(x.doc.id)+'">'+esc(x.so)+'</button>':'<span class="tag">'+esc(x.so)+' (chưa có trong thư viện)</span>').join(' ')+'</div>':'')+
+  (replDocs(d).length&&(d._st==='expired'||d.thaybo)?'<div class="note"><b>'+(d._st==='expired'?'Đã hết hiệu lực.':'Có văn bản thay thế.')+'</b> Văn bản thay thế hoặc sửa đổi: '+replDocs(d).map(x=>x.doc?'<button class="tag" style="border:0;cursor:pointer" data-open="'+esc(x.doc.id)+'">'+esc(x.so)+'</button>':'<span class="tag">'+esc(x.so)+' (chưa có trong thư viện)</span>').join(' ')+'</div>':'')+
   (d.luuy?'<div class="warn"><b>Cần kiểm tra.</b> '+esc(d.luuy)+'</div>':'')+(d._mau?'<div class="note"><b>Có mẫu biểu.</b> Văn bản này ban hành hoặc quy định mẫu để điền. Mở văn bản gốc, tìm phần Phụ lục hoặc Mẫu số, để lấy mẫu.</div>':'')+
   (d.tasks.length?'<div><h4>Dùng cho công việc</h4><div class="tags">'+d.tasks.map(t=>'<button class="tag" style="border:0;cursor:pointer" data-goto="'+t+'">'+esc(taskById[t].name)+'</button>').join('')+'</div></div>':'')+
   '<div><h4>Tóm tắt</h4><p>'+esc(d.summary||d.ten)+'</p></div>'+
