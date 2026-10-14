@@ -196,7 +196,7 @@ details.adv[open] summary::before{content:"–"}
 .row-side{display:flex;align-items:center;gap:8px;padding-top:14px}
 .pill{font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
 .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.new{background:var(--accent-soft);color:var(--accent)}
-.pill.soon{background:var(--warn-soft);color:var(--warn)} .pill.old{background:var(--bad-soft);color:var(--bad)}
+.pill.soon{background:var(--warn-soft);color:var(--warn)} .pill.end{background:var(--bad-soft);color:var(--bad);box-shadow:inset 0 0 0 1px currentColor} .pill.old{background:var(--bad-soft);color:var(--bad)}
 .open{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line);color:var(--muted);background:var(--surface);text-decoration:none}
 .open:hover{color:var(--accent);border-color:var(--accent)}
 .more{display:flex;justify-content:center;margin-top:20px}
@@ -280,7 +280,7 @@ details.adv[open] summary::before{content:"–"}
 <div class="wrap">
   <header class="top">
     <div class="brand"><svg viewBox="0 0 120 120" width="44" height="44" aria-hidden="true"><path d="M42 38 L60 27 L78 38" fill="none" stroke="var(--lg2)" stroke-width="5" stroke-linejoin="miter"/><path d="M47 25 L60 17 L73 25" fill="none" stroke="var(--lg1)" stroke-width="5" stroke-linejoin="miter"/><path d="M53 13 L60 9 L67 13" fill="none" stroke="var(--ln2)" stroke-width="5" stroke-linejoin="miter"/><rect x="57" y="44" width="6" height="54" fill="var(--ln1)"/><rect x="14" y="50" width="92" height="3" fill="var(--ln1)"/><path d="M24 53L12 76H36Z" fill="none" stroke="var(--ln1)" stroke-width="2.6" stroke-linejoin="miter"/><path d="M96 53L84 76H108Z" fill="none" stroke="var(--ln1)" stroke-width="2.6" stroke-linejoin="miter"/><path d="M36 104l8-6 8 6 8-6 8 6 8-6 8 6" fill="none" stroke="var(--ln2)" stroke-width="2.8" stroke-linejoin="miter"/><path d="M36 113l8-6 8 6 8-6 8 6 8-6 8 6" fill="none" stroke="var(--ln2)" stroke-width="2.8" stroke-linejoin="miter"/><path d="M60 47l3.4 3.4L60 53.8l-3.4-3.4z" fill="var(--lgold)"/></svg><span><b>Bản đồ pháp lý dự án</b><small>AQUA LEGAL</small></span></div>
-    <div class="clock" id="clock" aria-live="off" title="Giờ Việt Nam"><b id="clkT">--:--:--</b><span id="clkD"></span></div>
+    <div class="clock" id="clock" aria-live="off" title="Giờ Việt Nam"><b id="clkT">--:--:--</b><span id="clkD"></span><span id="clkL" style="display:block;font-size:12px;color:var(--faint)"></span></div>
     <div class="seg" role="group" aria-label="Cách tra cứu">
       <button id="modeJ" aria-pressed="true">Theo hành trình</button>
       <button id="modeF" aria-pressed="false">Theo lĩnh vực</button>
@@ -378,6 +378,7 @@ function status(d){
   const e=pd(d.het),h=pd(d.hl);
   if(e&&e<today&&!/\(/.test(d.het))return 'expired';
   if(h&&h>today)return 'soon';
+  if(e&&e>=today&&!/\(/.test(d.het)&&(e-today)/864e5<=365)return 'ending';
   if(h&&(today-h)/864e5<=60)return 'new';
   return 'active';
 }
@@ -457,6 +458,7 @@ function applyFilters(list,opt){
     if(S.validity==='expired'&&d._st!=='expired')return false;
     if(S.validity==='active'&&!(d._st==='active'||d._st==='new'))return false;
     if(S.validity==='soon'&&d._st!=='soon')return false;
+    if(S.validity==='ending'&&d._st!=='ending')return false;
     if(S.grp!=='all'&&groupOf(d)!==S.grp)return false;
     if(S.type&&d.type!==S.type)return false;
     if(S.year&&d._y!==S.year)return false;
@@ -483,7 +485,7 @@ function hl(text){
 }
 
 /* ---------- vẽ ---------- */
-const PILL={ok:['ok','Đang hiệu lực'],new:['new','Mới hiệu lực'],soon:['soon','Sắp hiệu lực'],old:['old','Hết hiệu lực']};
+const PILL={ok:['ok','Đang hiệu lực'],new:['new','Mới hiệu lực'],soon:['soon','Sắp hiệu lực'],ending:['end','Sắp hết hiệu lực'],old:['old','Hết hiệu lực']};
 function pill(d){const k=d._st==='active'?'ok':d._st==='expired'?'old':d._st;return '<span class="pill '+PILL[k][0]+'">'+PILL[k][1]+'</span>'}
 const GL={'Luật':'L','Bộ luật':'BL','Nghị định':'NĐ','Thông tư':'TT','Thông tư liên tịch':'TTLT','Nghị quyết':'NQ','Quyết định':'QĐ','Công văn':'CV','Công điện':'CĐ','Quy chuẩn':'QC','Thủ tục':'TTHC'};
 function replDocs(d){
@@ -511,7 +513,7 @@ function controlsHtml(base){
   '<label>Loại chi tiết<select class="sel" id="fType">'+opt(types,S.type,'Tất cả loại')+'</select></label>'+
   '<label>Năm ban hành<select class="sel" id="fYear">'+opt(years,S.year,'Tất cả năm')+'</select></label>'+
   '<label>Cơ quan ban hành<select class="sel" id="fOrg">'+opt(orgs,S.org,'Tất cả cơ quan')+'</select></label>'+
-  '<label>Hiệu lực<select class="sel" id="fVal"><option value="current"'+(S.validity==='current'?' selected':'')+'>Đang hoặc sắp hiệu lực</option><option value="all"'+(S.validity==='all'?' selected':'')+'>Tất cả</option><option value="active"'+(S.validity==='active'?' selected':'')+'>Chỉ đang hiệu lực</option><option value="soon"'+(S.validity==='soon'?' selected':'')+'>Chỉ sắp hiệu lực</option><option value="expired"'+(S.validity==='expired'?' selected':'')+'>Chỉ hết hiệu lực</option></select></label>'+
+  '<label>Hiệu lực<select class="sel" id="fVal"><option value="current"'+(S.validity==='current'?' selected':'')+'>Đang hoặc sắp hiệu lực</option><option value="all"'+(S.validity==='all'?' selected':'')+'>Tất cả</option><option value="active"'+(S.validity==='active'?' selected':'')+'>Chỉ đang hiệu lực</option><option value="soon"'+(S.validity==='soon'?' selected':'')+'>Chỉ sắp hiệu lực</option><option value="ending"'+(S.validity==='ending'?' selected':'')+'>Chỉ sắp hết hiệu lực</option><option value="expired"'+(S.validity==='expired'?' selected':'')+'>Chỉ hết hiệu lực</option></select></label>'+
   '</div></details>';
 }
 function resultsHtml(list,showTags,extraLinks){
@@ -529,8 +531,8 @@ function resultsHtml(list,showTags,extraLinks){
 
 
 function renderStats(){
-  const c={all:ALL.length,Luật:0,'Nghị định':0,'Thông tư':0,other:0},v={active:0,soon:0,expired:0};
-  ALL.forEach(d=>{c[groupOf(d)]++;if(d._st==='expired')v.expired++;else if(d._st==='soon')v.soon++;else v.active++});
+  const c={all:ALL.length,Luật:0,'Nghị định':0,'Thông tư':0,other:0},v={active:0,soon:0,ending:0,expired:0};
+  ALL.forEach(d=>{c[groupOf(d)]++;if(d._st==='expired')v.expired++;else if(d._st==='soon')v.soon++;else if(d._st==='ending')v.ending++;else v.active++});
   const on=(g,val)=>S.all&&!S.q.trim()&&S.grp===g&&S.validity===val;
   const cell=(n,label,g,val,dot)=>'<button class="stat" data-stat="'+g+'|'+val+'" aria-pressed="'+on(g,val)+'"><b>'+n+'</b><span>'+(dot?'<i style="background:'+dot+'"></i>':'')+label+'</span></button>';
   const tot=ALL.length||1;
@@ -539,8 +541,8 @@ function renderStats(){
    cell(c.all,'Tổng văn bản','all','all')+cell(c['Luật'],'Luật, bộ luật','Luật','all')+cell(c['Nghị định'],'Nghị định','Nghị định','all')+cell(c['Thông tư'],'Thông tư','Thông tư','all')+cell(c.other,'Quyết định, nghị quyết, khác','other','all')+
    '</div></div>'+
    '<div class="sgroup"><div class="sg-label">Theo hiệu lực</div><div class="sg-cells">'+
-   cell(v.active,'Đang hiệu lực','all','active','var(--ok)')+cell(v.soon,'Sắp hiệu lực','all','soon','var(--warn)')+cell(v.expired,'Hết hiệu lực','all','expired','var(--bad)')+
-   '</div><div class="vbar" aria-hidden="true"><span style="flex:'+v.active+';background:var(--ok)"></span><span style="flex:'+v.soon+';background:var(--warn)"></span><span style="flex:'+v.expired+';background:var(--bad)"></span></div></div>';
+   cell(v.active,'Đang hiệu lực','all','active','var(--ok)')+cell(v.soon,'Sắp hiệu lực','all','soon','var(--warn)')+cell(v.ending,'Sắp hết hiệu lực','all','ending','var(--bad)')+cell(v.expired,'Hết hiệu lực','all','expired','var(--bad)')+
+   '</div><div class="vbar" aria-hidden="true"><span style="flex:'+v.active+';background:var(--ok)"></span><span style="flex:'+v.soon+';background:var(--warn)"></span><span style="flex:'+v.ending+';background:var(--bad);opacity:.55"></span><span style="flex:'+v.expired+';background:var(--bad)"></span></div></div>';
 }
 function renderTrack(){
   const el=$('#track');
@@ -569,7 +571,7 @@ function render(){
     h+=controlsHtml(base)+resultsHtml(list,true)+'</section>';
   }else if(S.all){
     const base=ALL,list=applyFilters(base);
-    const lab=S.validity==='active'?'Văn bản đang hiệu lực':S.validity==='soon'?'Văn bản sắp có hiệu lực':S.validity==='expired'?'Văn bản hết hiệu lực':S.grp!=='all'?(GROUPS.find(g=>g[0]===S.grp)||[0,'Văn bản'])[1]:'Tất cả văn bản';
+    const lab=S.validity==='active'?'Văn bản đang hiệu lực':S.validity==='soon'?'Văn bản sắp có hiệu lực':S.validity==='ending'?'Văn bản sắp hết hiệu lực':S.validity==='expired'?'Văn bản hết hiệu lực':S.grp!=='all'?(GROUPS.find(g=>g[0]===S.grp)||[0,'Văn bản'])[1]:'Tất cả văn bản';
     h+='<section class="panel" id="results"><div class="crumbs"><button data-reset>Tuyến dự án</button><span aria-hidden="true">›</span><span>'+esc(lab)+'</span></div><h2>'+esc(lab)+'</h2><p class="lede">Toàn bộ thư viện, không phân theo giai đoạn. Chọn một giai đoạn ở trên để xem theo việc cần làm.</p>'+controlsHtml(base)+resultsHtml(list,true)+'</section>';
   }else if(S.mode==='f'){
     h+='<section class="panel"><div class="fields">'+Object.keys(LAWS).map(k=>{const n=ALL.filter(d=>d.law===k&&cur(d)).length;return '<button class="field" data-law="'+k+'" aria-pressed="'+(S.law===k)+'"><span>'+esc(LAWS[k].title)+'</span><em>'+n+'</em></button>'}).join('')+'</div></section>';
@@ -741,6 +743,11 @@ function tickClock(){
     const d=n.toLocaleDateString('vi-VN',{...o,day:'2-digit',month:'2-digit',year:'numeric'});
     document.getElementById('clkT').textContent=t;
     document.getElementById('clkD').textContent=w+', ngày '+d.split('/')[0]+' tháng '+d.split('/')[1]+' năm '+d.split('/')[2];
+  }catch(e){}
+  try{const lp=new Intl.DateTimeFormat('en-u-ca-chinese',{timeZone:'Asia/Ho_Chi_Minh',day:'numeric',month:'numeric',year:'numeric'}).formatToParts(new Date());
+    const g=k=>(lp.find(x=>x.type===k)||{}).value||'';const m=g('month'),y=+g('relatedYear');
+    const CAN=['Canh','Tân','Nhâm','Quý','Giáp','Ất','Bính','Đinh','Mậu','Kỷ'],CHI=['Thân','Dậu','Tuất','Hợi','Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi'];
+    document.getElementById('clkL').textContent='Âm lịch: ngày '+parseInt(g('day'))+' tháng '+parseInt(m)+(/bis/.test(m)?' (nhuận)':'')+' năm '+CAN[y%10]+' '+CHI[y%12];
   }catch(e){}
 }
 tickClock();setInterval(tickClock,1000);showUpd();
