@@ -674,12 +674,21 @@ function init(){
     if(a==="file"){const fl=e.target.files[0];if(fl)fl.text().then(t=>{DATA[cur().id]=fromRows(parseCSV(t).slice(1).filter(r=>r.length>=9&&(r[6]||r[7]||r[8])));SRC[cur().id]="file CSV "+fl.name;S.sel=-1;render()}).catch(()=>alert("Không đọc được file."));return}
     if(a==="w"){S.w=v;S.sel=-1;results()}else if(a==="vt"&&S.mode==="nn"){S.vt=+v;upd()}else if(a==="pl"){S.pl=v;S.sel=-1;results()}else if(a==="vt"||a==="vt2"){S.vt=+v;results();const s=root.querySelector('[data-a=vt]');if(s)s.value=S.vt}else if(a==="loai"){S.loai=+v;calc()}else if(a==="nl"){S.nl=+v;S.mode==="nn"?upd():results()}else if(a==="nv"){S.nv=+v;S.mode==="nn"?upd():results()}else if(a==="dan"){S.dan=e.target.checked;S.mode==="nn"?upd():results()}else if(a==="dw"){S.dw=v;S.dq="";S.dsel=-1;S.ns=-1;render()}else if(a==="nw"){S.nw=v;S.ns=-1;render()}else if(a==="ns"){S.ns=+v;upd()}});
   const CFG_GID=451511553;
-  async function loadCfg(){try{const t=await (await fetch(pub(CFG_GID),{cache:"no-store"})).text();let add=0;
-    parseCSV(t).slice(1).forEach(r=>{const nm=(r[0]||"").trim();if(!nm)return;const g=(r[1]||"").trim(),ng=(r[2]||"").trim(),tot=parseInt(r[3])||0,doc=(r[4]||"").trim(),du=(r[5]||"").trim();
+  const pubAt=(g,b)=>/^https?:/i.test(g)?g:(b||PUB)+"?gid="+g+"&single=true&output=csv";
+  const GD_BRAIN=(typeof SHEET_CSV_URL!=="undefined"&&SHEET_CSV_URL)?SHEET_CSV_URL.replace(/gid=\d+/,"gid=209393605"):"";
+  async function loadCfg(){
+    let rows=null;
+    /* 1) não bộ: tab "Giá đất" trong Sheet du-lieu-van-ban */
+    if(GD_BRAIN){try{const r=await fetch(GD_BRAIN,{cache:"no-store"});if(r.ok){const g=parseCSV(await r.text());if(g.length>1&&/ten tinh/.test(fold(g[0][0]||"")))rows=g.slice(1)}}catch(e){}}
+    /* 2) dự phòng: tab "Cấu hình" của Sheet giá đất */
+    if(!rows){try{const t=await (await fetch(pub(CFG_GID),{cache:"no-store"})).text();rows=parseCSV(t).slice(1)}catch(e){return}}
+    let add=0;
+    rows.forEach(r=>{const nm=(r[0]||"").trim();if(!nm)return;const g=(r[1]||"").trim(),ng=(r[2]||"").trim(),tot=parseInt(r[3])||0,doc=(r[4]||"").trim(),du=(r[5]||"").trim(),bs=(r[6]||"").trim();
       let c=CITIES.find(x=>fold(x.name)===fold(nm));
-      if(!c){if(!/^\d+$/.test(g))return;c={id:"x"+g,name:nm,gid:+g,csv:pub(g),doc:"",docUrl:"",updated:"",rule:null,pl:{},vt:true,nn:{dn:true,doc:"văn bản gốc của địa phương",kText:"Hệ số điều chỉnh giá đất (K) theo quyết định hiện hành của UBND địa phương: bạn tự nhập K. Mặc định K = 1."}};CITIES.push(c);add++}
-      if(/^\d+$/.test(ng)&&c.nn&&c.nn.dn)c.nnCsv=pub(ng);if(tot)c.total=tot;if(doc){c.doc=doc;if(c.nn&&c.nn.dn)c.nn.doc=doc}if(du)c.docUrl=du});
-    if(add||true)render()}catch(e){}}
+      if(!c){if(!g||!(/^\d+$/.test(g)||/^https?:/i.test(g)))return;c={id:"x"+fold(nm).replace(/[^a-z0-9]+/g,""),name:nm,gid:/^\d+$/.test(g)?+g:g,csv:pubAt(g,bs),doc:"",docUrl:"",updated:"",rule:null,pl:{},vt:true,nn:{dn:true,doc:"văn bản gốc của địa phương",kText:"Hệ số điều chỉnh giá đất (K) theo quyết định hiện hành của UBND địa phương: bạn tự nhập K. Mặc định K = 1."}};CITIES.push(c);add++}
+      else if(g&&(/^\d+$/.test(g)||/^https?:/i.test(g))&&(bs||!/^\d+$/.test(g)||+g!==c.gid)){c.csv=pubAt(g,bs);if(/^\d+$/.test(g))c.gid=+g}
+      if(ng&&(/^\d+$/.test(ng)||/^https?:/i.test(ng))&&c.nn&&c.nn.dn)c.nnCsv=pubAt(ng,bs);if(tot)c.total=tot;if(doc){c.doc=doc;if(c.nn&&c.nn.dn)c.nn.doc=doc}if(du)c.docUrl=du});
+    render()}
   window.renderGia=render;render();ensure(0).then(render);loadCfg();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
@@ -729,6 +738,21 @@ stageById.x=STAGES[STAGES.length-1];
 const TAX_GID=281750059,TAX_CSV_URL=SHEET_CSV_URL?SHEET_CSV_URL.replace(/gid=\d+/,'gid='+TAX_GID):'';
 const TAXSNAP={st:STAGES.slice(),tk:TASKS.slice(),lw:Object.assign({},LAWS)};
 function taxRebuild(){Object.keys(taskById).forEach(k=>delete taskById[k]);TASKS.forEach(t=>{taskById[t.id]=t});Object.keys(stageById).forEach(k=>delete stageById[k]);STAGES.forEach(s=>{stageById[s.id]=s})}
+const LOAI_CSV_URL=SHEET_CSV_URL?SHEET_CSV_URL.replace(/gid=\d+/,'gid=1749386016'):'';
+let GLSNAP=null;const GRSNAP=GROUPS.slice();
+function applyTypes(grid){if(!grid||grid.length<4)return false;const H=grid[0].map(h=>norm(h).trim()),iT=H.findIndex(h=>h.indexOf('loai')===0),iA=H.findIndex(h=>h.indexOf('viet tat')===0),iG=H.findIndex(h=>h.indexOf('nhom loc')===0);if(iT<0||iA<0||iG<0)return false;
+  if(!GLSNAP)GLSNAP=Object.assign({},GL);
+  const gl={},tg={},groups=[];grid.slice(1).forEach(r=>{const t=String(r[iT]||'').trim(),a=String(r[iA]||'').trim(),g=String(r[iG]||'').trim();if(!t)return;if(a)gl[t]=a;if(g){const key=norm(g)==='khac'?'other':g;tg[t]=key;if(key!=='other'&&!groups.includes(key))groups.push(key)}});
+  if(Object.keys(gl).length<3)return false;
+  Object.keys(GL).forEach(k=>delete GL[k]);Object.assign(GL,gl);TYPEGRP=tg;
+  GROUPS.length=0;GROUPS.push(['all','Tất cả']);groups.forEach(g=>GROUPS.push([g,g]));GROUPS.push(['other','Khác']);return true}
+function restoreTypes(){if(GLSNAP){Object.keys(GL).forEach(k=>delete GL[k]);Object.assign(GL,GLSNAP)}TYPEGRP=null;GROUPS.length=0;GRSNAP.forEach(x=>GROUPS.push(x))}
+const ORG_GID=1551567437,ORG_CSV_URL=SHEET_CSV_URL?SHEET_CSV_URL.replace(/gid=\d+/,'gid='+ORG_GID):'';
+const ORGSNAP=Object.assign({},ORG);
+function applyOrg(grid){if(!grid||grid.length<4)return false;const H=grid[0].map(h=>norm(h).trim()),iK=H.findIndex(h=>h.indexOf('ma viet tat')===0),iN=H.findIndex(h=>h.indexOf('ten co quan')===0);if(iK<0||iN<0)return false;
+  const o={};grid.slice(1).forEach(r=>{const k=String(r[iK]||'').trim(),n=String(r[iN]||'').trim();if(k&&n)o[k]=n});
+  if(Object.keys(o).length<3)return false;Object.keys(ORG).forEach(k=>delete ORG[k]);Object.assign(ORG,o);return true}
+function restoreOrg(){Object.keys(ORG).forEach(k=>delete ORG[k]);Object.assign(ORG,ORGSNAP)}
 function restoreTax(){STAGES.length=0;TAXSNAP.st.forEach(x=>STAGES.push(x));TASKS.length=0;TAXSNAP.tk.forEach(x=>TASKS.push(x));Object.keys(LAWS).forEach(k=>delete LAWS[k]);Object.assign(LAWS,TAXSNAP.lw);taxRebuild()}
 function applyTax(grid){
   if(!grid||grid.length<2)return false;
@@ -757,7 +781,7 @@ function orgOf(d){
   if(d.cq&&d.cq!=='Bộ, ngành')return d.cq;
   const s=d.so||'';
   const m=/\/([^\/]+)$/.exec(s);
-  if(m){const k=m[1].replace(/^.*?(BXD|BTC|BTNMT|BNNMT|BNNPTNT|BKHĐT|BCA|BQP|BGTVT|BYT|BCT|BNV|BGDĐT|NHNN).*$/,'$1');if(ORG[k])return ORG[k];if(ORG[m[1]])return ORG[m[1]]}
+  if(m){if(ORG[m[1]])return ORG[m[1]];let bi=-1,bk='';Object.keys(ORG).forEach(x=>{if(!/^[A-ZĐ]+$/.test(x))return;const i=m[1].indexOf(x);if(i>=0&&(bi<0||i<bi||(i===bi&&x.length>bk.length))){bi=i;bk=x}});if(bk)return ORG[bk]}
   if(/QH/.test(s))return 'Quốc hội';
   return d.cq||'Khác';
 }
@@ -850,7 +874,8 @@ function applyHash(){
 function setHash(){try{const h=hashOf();history.replaceState(null,'',h?'#'+h:location.pathname+location.search)}catch(e){}}
 
 /* ---------- lọc & xếp ---------- */
-function groupOf(d){return d.type==='Luật'||d.type==='Bộ luật'?'Luật':d.type==='Nghị định'?'Nghị định':/^Thông tư/.test(d.type)?'Thông tư':'other'}
+let TYPEGRP=null;
+function groupOf(d){if(TYPEGRP&&TYPEGRP[d.type])return TYPEGRP[d.type];return d.type==='Luật'||d.type==='Bộ luật'?'Luật':d.type==='Nghị định'?'Nghị định':/^Thông tư/.test(d.type)?'Thông tư':'other'}
 function baseSet(){
   if(S.q.trim()||S.all)return ALL;
   if(S.mode==='f')return S.law?ALL.filter(d=>d.law===S.law):[];
@@ -1179,10 +1204,12 @@ tickClock();setInterval(tickClock,1000);showUpd();
 async function loadSheet(){
   if(!SHEET_CSV_URL)return;
   try{
-    const [r,rt]=await Promise.all([fetch(SHEET_CSV_URL,{cache:'no-store'}),TAX_CSV_URL?fetch(TAX_CSV_URL,{cache:'no-store'}).catch(()=>null):Promise.resolve(null)]);
+    const [r,rt,ro,rl]=await Promise.all([fetch(SHEET_CSV_URL,{cache:'no-store'}),TAX_CSV_URL?fetch(TAX_CSV_URL,{cache:'no-store'}).catch(()=>null):Promise.resolve(null),ORG_CSV_URL?fetch(ORG_CSV_URL,{cache:'no-store'}).catch(()=>null):Promise.resolve(null),LOAI_CSV_URL?fetch(LOAI_CSV_URL,{cache:'no-store'}).catch(()=>null):Promise.resolve(null)]);
     if(!r.ok)throw new Error('http '+r.status);
     const grid=parseCSV(await r.text());
     let taxOk=false;if(rt&&rt.ok){try{taxOk=applyTax(parseCSV(await rt.text()))}catch(e){taxOk=false;restoreTax()}}
+    if(ro&&ro.ok){try{applyOrg(parseCSV(await ro.text()))}catch(e){restoreOrg()}}
+    if(rl&&rl.ok){try{applyTypes(parseCSV(await rl.text()))}catch(e){restoreTypes()}}
     const mr=grid.find(x=>String(x[0]||'').trim()==='__CAPNHAT__');
     if(mr&&String(mr[3]||'').trim()){UPD=String(mr[3]).trim();showUpd()}
     let docs;try{docs=rowsToDocs(grid)}catch(e){if(taxOk)restoreTax();throw e}
