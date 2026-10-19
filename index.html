@@ -532,9 +532,13 @@ function init(){
     else{DATA[c.id]=null;ERR[c.id]=""}}
   const D=()=>DATA[cur().id];
   function V4(i,t,v){const d=D(),x=d.x&&d.x[i];if(x)return[v,(x[2]&&x[2][t])||"",(x[3]&&x[3][t])||"",(x[4]&&x[4][t])||""];return vts(cur(),v,d.pl[i])}
-  function hits(){const d=D(),qs=fold(S.q).split(/\s+/).filter(Boolean),out=[];
-    for(let i=0;i<d.d.length;i++){if(S.w!==""&&d.wi[i]!==+S.w)continue;if(S.pl&&d.pl[i]!==S.pl)continue;
-      let ok=true;for(const w of qs)if(d.idx[i].indexOf(w)<0){ok=false;break}if(ok)out.push(i)}return out}
+  let HC=null;
+  function hits(){const d=D(),fq=fold(S.q).replace(/^\s+/,""),qs=fq.split(/\s+/).filter(Boolean),out=[],fk=S.city+"|"+S.w+"|"+S.pl;
+    let src=null;if(HC&&HC.d===d&&HC.fk===fk&&HC.fq&&fq.indexOf(HC.fq)===0)src=HC.out;
+    const n=src?src.length:d.d.length;
+    for(let j=0;j<n;j++){const i=src?src[j]:j;if(!src){if(S.w!==""&&d.wi[i]!==+S.w)continue;if(S.pl&&d.pl[i]!==S.pl)continue}
+      let ok=true;for(const w of qs)if(d.idx[i].indexOf(w)<0){ok=false;break}if(ok)out.push(i)}
+    HC={d,fk,fq,out};return out}
   const P=(i,v,t)=>V4(i,t||0,v)[S.vt-1]||0;
   function table(L){const d=D(),h="",A=parseFloat(String(S.dt).replace(",","."))||0,cell=(i,v,l,t)=>{const p=P(i,v,t);return `<td class="r" data-l="${l}">${fm(p)}${A>0&&p?`<div style="color:#0b6b3a;font-weight:700;font-size:15px">= ${fm(Math.round(p*1000*A))} đ</div>`:""}</td>`};
     return `<div class="tw"><table class="gt cards"><tr><th>Phường/xã</th><th>Tên đường</th><th>Đoạn</th><th class="r">Đất ở</th><th class="r">Thương mại, dịch vụ</th><th class="r">Sản xuất kinh doanh</th></tr>`+
@@ -628,7 +632,7 @@ function init(){
   function calc(){const o=root.querySelector("[data-r=kq]");if(!o||S.sel<0)return;const d=D(),c=cur(),i=S.sel,v=[d.o[i],d.tm[i],d.sx[i]][S.loai],u=(V4(i,S.loai,v)[((c.rule||c.vt||(d.x&&d.x[i]))?S.vt:1)-1]||0)*1000,dt=parseFloat(String(S.dt).replace(",","."))||0;
     o.innerHTML=u?`Đơn giá <b>${fm(u)}</b> đ/m²`+(dt>0?` × ${dt} m² = <b>${fm(Math.round(u*dt))} đ</b>`:" · nhập diện tích ở ô phía trên để ra thành tiền"):"Không có giá cho loại đất / vị trí này"}
   /* ô diện tích dùng chung ở thanh tìm kiếm */
-  function results(){const box=root.querySelector("[data-r=res]");if(!box)return;const L=hits(),LM=(S.q.trim()||S.w!==""||S.pl)?500:S.lim;
+  function results(){const box=root.querySelector("[data-r=res]");if(!box)return;const L=hits(),LM=(S.q.trim()||S.w!==""||S.pl)?80:S.lim;
     box.innerHTML=`<div class="hint" style="margin:6px 0">${L.length.toLocaleString("vi-VN")} kết quả${L.length>LM?` (hiển thị ${LM} dòng đầu – gõ thêm từ khóa để thu hẹp)`:""}</div><div class="tip">👆 <b>Bấm vào một dòng</b> để xem đủ giá vị trí 1–4 và tính tiền chuyển mục đích. Giá trong bảng tính bằng <b>đồng/m²</b>${cur().rule?", đang xem theo <b>vị trí "+S.vt+"</b>":", vị trí 1"}.</div>`+(S.sel>=0?detail(S.sel):nnWard())+(L.length?table(L.slice(0,LM)):"");calc();nnCalc()}
   function subtabs(c){if(!c.nn)return"";return `<div class="modes"><button class="mode ${S.mode==="gia"?"on":""}" data-a="mode" data-m="gia"><b>Tra giá đất theo đường</b><span>Đất ở, thương mại dịch vụ, sản xuất kinh doanh</span></button><button class="mode ${S.mode==="nn"?"on":""}" data-a="mode" data-m="nn"><b>Đất nông nghiệp</b><span>Xem giá và tính tiền khi chuyển sang đất ở</span></button></div>`}
   function adminPanel(c){if(!window.GIA_ADMIN)return"";
@@ -668,7 +672,8 @@ function init(){
     const ns2=e.target.closest("[data-a=nnsave]");if(ns2){const c=cur();lsSet("gdx_nncsv_"+c.id,(root.querySelector("[data-a=nnurl]").value||"").trim());delete NNSETS[c.id];delete NNP[c.id];render();nnLoad().then(render);return}
     const dg=e.target.closest("[data-dg]");if(dg){S.dsel=+dg.dataset.dg;S.ns=-1;render();return}
     const tr=e.target.closest("tr[data-gi]");if(tr){const i=+tr.dataset.gi;S.sel=S.sel===i?-1:i;results()}});
-  root.addEventListener("input",e=>{const a=e.target.dataset.a;if(a==="dq"){S.dq=e.target.value;const z=root.querySelector("[data-r=dnl]");if(z)z.innerHTML=dnList()}else if(a==="q"){S.q=e.target.value;S.sel=-1;results()}else if(a==="dt"){S.dt=e.target.value;S.mode==="nn"?nnCalc():results()}else if(a==="k"){S.k=e.target.value;nnCalc()}});
+  let GT=0;const later=f=>{clearTimeout(GT);GT=setTimeout(f,180)};
+  root.addEventListener("input",e=>{const a=e.target.dataset.a;if(a==="dq"){S.dq=e.target.value;later(()=>{const z=root.querySelector("[data-r=dnl]");if(z)z.innerHTML=dnList()})}else if(a==="q"){S.q=e.target.value;S.sel=-1;later(results)}else if(a==="dt"){S.dt=e.target.value;later(()=>{S.mode==="nn"?nnCalc():results()})}else if(a==="k"){S.k=e.target.value;later(nnCalc)}});
   root.addEventListener("change",e=>{const a=e.target.dataset.a,v=e.target.value;if(!a)return;
     if(a==="nnfile"){const fl=e.target.files[0];if(fl)fl.text().then(t=>{NNSETS[cur().id]=nnFromCsv(t);S.dw="";S.dsel=-1;render()}).catch(()=>alert("Không đọc được file."));return}
     if(a==="file"){const fl=e.target.files[0];if(fl)fl.text().then(t=>{DATA[cur().id]=fromRows(parseCSV(t).slice(1).filter(r=>r.length>=9&&(r[6]||r[7]||r[8])));SRC[cur().id]="file CSV "+fl.name;S.sel=-1;render()}).catch(()=>alert("Không đọc được file."));return}
