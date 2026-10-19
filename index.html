@@ -428,7 +428,7 @@ const CITIES=[
   {id:"dn",name:"Đà Nẵng",gid:1980692656,csv:pub(1980692656),doc:"Nghị quyết 28/2026/NQ-HĐND (giá đất và bảng giá các loại đất, hiệu lực 10/06/2026)",docUrl:"https://luatvietnam.vn/dat-dai/nghi-quyet-28-2026-nq-hdnd-da-nang-quy-dinh-gia-dat-va-bang-gia-cac-loai-dat-437159-d2.html",updated:"",rule:null,pl:{}},
   {id:"ct",name:"Cần Thơ",gid:792712196,csv:pub(792712196),doc:"Nghị quyết 41/2025/NQ-HĐND (bảng giá đất áp dụng từ 01/01/2026)",docUrl:"https://pbgdpl.cantho.gov.vn/quy-dinh-bang-gia-dat-ap-dung-tu-ngay-01012026-tren-dia-ban-thanh-pho-can-tho",updated:"",rule:null,pl:{}},
   {id:"hue",name:"Huế",gid:523061201,csv:pub(523061201),doc:"Nghị quyết 54/2025/NQ-HĐND (bảng giá đất năm 2026)",docUrl:"https://thuvienphapluat.vn/van-ban/Bat-dong-san/Nghi-quyet-54-2025-NQ-HDND-Bang-gia-dat-Hue-nam-2026-687773.aspx",updated:"",rule:null,pl:{}},
-  {id:"dnai",name:"Đồng Nai",gid:1834576562,csv:pub(1834576562),doc:"Nghị quyết 28/2025/NQ-HĐND (bảng giá đất lần đầu năm 2026)",docUrl:"https://thuvienphapluat.vn/van-ban/Bat-dong-san/Nghi-quyet-28-2025-NQ-HDND-Bang-gia-dat-lan-dau-Dong-Nai-nam-2026-687389.aspx",updated:"",rule:null,pl:{}}
+  {id:"dnai",name:"Đồng Nai",warn:"<b>Bảng giá Đồng Nai đang được cập nhật.</b> Hiện mới có một phần số phường/xã (đang bổ sung cho đủ 95 phường/xã theo Nghị quyết 28/2025/NQ-HĐND). Giá lấy từ bảng tính của đơn vị soạn, hãy đối chiếu Nghị quyết gốc trước khi dùng.",gid:1834576562,csv:pub(1834576562),doc:"Nghị quyết 28/2025/NQ-HĐND (bảng giá đất lần đầu năm 2026)",docUrl:"https://thuvienphapluat.vn/van-ban/Bat-dong-san/Nghi-quyet-28-2025-NQ-HDND-Bang-gia-dat-lan-dau-Dong-Nai-nam-2026-687389.aspx",updated:"",rule:null,pl:{}}
 ];
 const ROOT_ID="gia-dat-root";
 /* Google Sheet nguồn (chỉ hiện ở app quản lý, khi window.GIA_ADMIN = true). Mỗi thành phố = 1 trang tính (gid) */
@@ -451,8 +451,9 @@ function nnRows(c,kv,dan,dop){const N=c.nn,hn=N.hn[kv],ln=N.ln[kv];let L=ln.slic
 const num=x=>{x=String(x||"").replace(/[^\d]/g,"");return x?+x:0};
 function parseCSV(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}else if(ch=='"')q=true;else if(ch==","){r.push(c);c=""}else if(ch=="\n"){r.push(c);R.push(r);r=[];c=""}else if(ch!="\r")c+=ch}
   if(c||r.length){r.push(c);R.push(r)}return R}
+const pvx=t=>{if(!t)return null;const m={};String(t).split(";").forEach(q=>{const z=q.split(":");if(z.length===2)m[z[0]]=z[1].split("/").map(Number)});return m[2]?m:null};
 function fromRows(R){const wards=[...new Set(R.map(r=>r[1]))].sort(),wi={};wards.forEach((w,i)=>wi[w]=i);
-  const D={w:wards,pl:R.map(r=>r[0]),wi:R.map(r=>wi[r[1]]),s:R.map(r=>r[2]),d:R.map(r=>r[3]),tu:R.map(r=>r[4]),den:R.map(r=>r[5]),o:R.map(r=>num(r[6])),tm:R.map(r=>num(r[7])),sx:R.map(r=>num(r[8])),p:R.map(r=>r[9])};
+  const D={w:wards,pl:R.map(r=>r[0]),wi:R.map(r=>wi[r[1]]),s:R.map(r=>r[2]),d:R.map(r=>r[3]),tu:R.map(r=>r[4]),den:R.map(r=>r[5]),o:R.map(r=>num(r[6])),tm:R.map(r=>num(r[7])),sx:R.map(r=>num(r[8])),p:R.map(r=>r[9]),x:R.map(r=>pvx(r[10]))};
   D.idx=D.d.map((d,i)=>fold(d+" "+D.tu[i]+" "+D.den[i]+" "+D.w[D.wi[i]]));return D}
 async function loadCsv(u){const t=await (await fetch(u,{cache:"no-store"})).text();
   return fromRows(parseCSV(t).slice(1).filter(r=>r.length>=9&&(r[6]||r[7]||r[8])))}
@@ -525,6 +526,7 @@ function init(){
       catch(e){if(shown){SRC[c.id]="Google Sheet (không tải được, đang dùng bản lưu tạm)"}else{DATA[c.id]=null;ERR[c.id]="Không tải được dữ liệu từ Google Sheet. Hãy kiểm tra liên kết CSV đã xuất bản hoặc tải lại trang."}}}
     else{DATA[c.id]=null;ERR[c.id]=""}}
   const D=()=>DATA[cur().id];
+  function V4(i,t,v){const d=D(),x=d.x&&d.x[i];if(x)return[v,(x[2]&&x[2][t])||"",(x[3]&&x[3][t])||"",(x[4]&&x[4][t])||""];return vts(cur(),v,d.pl[i])}
   function hits(){const d=D(),qs=fold(S.q).split(/\s+/).filter(Boolean),out=[];
     for(let i=0;i<d.d.length;i++){if(S.w!==""&&d.wi[i]!==+S.w)continue;if(S.pl&&d.pl[i]!==S.pl)continue;
       let ok=true;for(const w of qs)if(d.idx[i].indexOf(w)<0){ok=false;break}if(ok)out.push(i)}return out}
@@ -560,13 +562,13 @@ function init(){
   function nnCalc(){const o=root.querySelector("[data-r=nnkq]"),i=S.mode==="nn"?S.ns:S.sel;if(!o||i<0)return;const c=cur(),d=D(),kv=kvOf(c,d.w[d.wi[i]]);if(kv<0)return;
     const dop=P(i,d.o[i]),R=nnRows(c,kv,S.dan,dop),pn=R[S.nl][1][S.nv-1]*1000,po=dop*1000,dt=parseFloat(String(S.dt).replace(",","."))||0,K=parseFloat(String(S.k).replace(",","."))||0,df=Math.max(0,po-pn);
     o.innerHTML=!po?"Không có giá đất ở cho dòng này":`Đất ở <b>${fm(po)}</b> − NN <b>${fm(pn)}</b> = <b>${fm(df)}</b> đ/m²`+(dt>0?` × ${dt} m² × K ${K} = <b>${fm(Math.round(df*dt*K))} đ</b>`:" · nhập diện tích ở ô phía trên")}
-  function detail(i){const d=D(),c=cur(),T=[["Đất ở",d.o[i]],["Đất thương mại, dịch vụ",d.tm[i]],["Đất SXKD (không phải TMDV)",d.sx[i]]],multi=!!c.rule;
+  function detail(i){const d=D(),c=cur(),T=[["Đất ở",d.o[i]],["Đất thương mại, dịch vụ",d.tm[i]],["Đất SXKD (không phải TMDV)",d.sx[i]]],multi=!!c.rule||!!(d.x&&d.x[i]);
     return `<div class="gdet"><b>${esc(d.d[i])}</b><div class="hint">${esc(d.w[d.wi[i]])}${c.pl[d.pl[i]]?" · "+esc(c.pl[d.pl[i]]):(d.pl[i]?" · Phụ lục "+esc(d.pl[i]):"")} · STT ${esc(d.s[i]||"–")}${d.p[i]?" · trang "+esc(d.p[i])+" của file PDF":""}${d.tu[i]?` · đoạn: ${esc(d.tu[i])}${d.den[i]?" → "+esc(d.den[i]):""}`:""}</div>
     <div class="tw"><table class="gt cards cards2"><tr><th>Loại đất</th><th class="r">Vị trí 1</th>${multi?'<th class="r">Vị trí 2</th><th class="r">Vị trí 3</th><th class="r">Vị trí 4</th>':""}</tr>
-    ${T.map(([n,v])=>{const a=vts(c,v,d.pl[i]);return `<tr><td>${n}</td>${a.slice(0,multi?4:1).map((x,k)=>`<td class="r" data-l="Vị trí ${k+1}">${x?fm(x*1000)+" đ":"–"}</td>`).join("")}</tr>`}).join("")}</table></div>
+    ${T.map(([n,v],k)=>{const a=V4(i,k,v);return `<tr><td>${n}</td>${a.slice(0,multi?4:1).map((x,k)=>`<td class="r" data-l="Vị trí ${k+1}">${x?fm(x*1000)+" đ":"–"}</td>`).join("")}</tr>`}).join("")}</table></div>${d.x&&d.x[i]&&d.x[i][5]?`<div class="hint" style="margin-top:8px">Đường/hẻm <b>không đấu nối trực tiếp</b> (vị trí 2–4):</div><div class="tw"><table class="gt cards cards2"><tr><th>Loại đất</th><th class="r">Vị trí 2</th><th class="r">Vị trí 3</th><th class="r">Vị trí 4</th></tr>${T.map(([n],t)=>`<tr><td>${n}</td>${[5,6,7].map((q,z)=>`<td class="r" data-l="Vị trí ${z+2}">${d.x[i][q]&&d.x[i][q][t]?fm(d.x[i][q][t]*1000)+" đ":"–"}</td>`).join("")}</tr>`).join("")}</table></div>`:""}
     <div class="step" style="margin-top:14px">Tính thành tiền cho dòng này</div><div class="bar"><select data-a="loai">${T.map(([n],k)=>`<option value="${k}" ${S.loai===k?"selected":""}>${n}</option>`).join("")}</select>${multi?`<select data-a="vt2">${[1,2,3,4].map(k=>`<option value="${k}" ${S.vt===k?"selected":""}>Vị trí ${k}</option>`).join("")}</select>`:""}<span class="res" data-r="kq"></span></div>
-    <div class="hint">Đơn vị: đồng/m². ${multi?esc(c.rule.text)+((c.rule.only1||[]).includes(d.pl[i])?"; phụ lục này chỉ nêu giá vị trí 1":"")+". ":"Chỉ có giá vị trí 1 theo bảng giá. "}Thửa có chiều sâu lớn có thể phải giảm giá theo quy định của địa phương, trang này chưa tính.</div>${nnBlock(i)}</div>`}
-  function calc(){const o=root.querySelector("[data-r=kq]");if(!o||S.sel<0)return;const d=D(),c=cur(),i=S.sel,v=[d.o[i],d.tm[i],d.sx[i]][S.loai],u=(vts(c,v,d.pl[i])[(c.rule?S.vt:1)-1]||0)*1000,dt=parseFloat(String(S.dt).replace(",","."))||0;
+    <div class="hint">Đơn vị: đồng/m². ${multi?(c.rule?esc(c.rule.text)+((c.rule.only1||[]).includes(d.pl[i])?"; phụ lục này chỉ nêu giá vị trí 1":""):"Giá vị trí 2–4 theo từng đoạn đường trong bảng giá")+". ":"Chỉ có giá vị trí 1 theo bảng giá. "}Thửa có chiều sâu lớn có thể phải giảm giá theo quy định của địa phương, trang này chưa tính.</div>${nnBlock(i)}</div>`}
+  function calc(){const o=root.querySelector("[data-r=kq]");if(!o||S.sel<0)return;const d=D(),c=cur(),i=S.sel,v=[d.o[i],d.tm[i],d.sx[i]][S.loai],u=(V4(i,S.loai,v)[((c.rule||(d.x&&d.x[i]))?S.vt:1)-1]||0)*1000,dt=parseFloat(String(S.dt).replace(",","."))||0;
     o.innerHTML=u?`Đơn giá <b>${fm(u)}</b> đ/m²`+(dt>0?` × ${dt} m² = <b>${fm(Math.round(u*dt))} đ</b>`:" · nhập diện tích ở ô phía trên để ra thành tiền"):"Không có giá cho loại đất / vị trí này"}
   /* ô diện tích dùng chung ở thanh tìm kiếm */
   function results(){const box=root.querySelector("[data-r=res]");if(!box)return;const L=hits(),LM=(S.q.trim()||S.w!==""||S.pl)?500:S.lim;
@@ -584,7 +586,7 @@ function init(){
     else if(d===null||!d.d.length)body=`<div class="empty"><b>${esc(c.name)}</b>: ${ERR[c.id]?esc(ERR[c.id]):"bảng giá đang được cập nhật."}${c.docUrl?`<br><a href="${esc(c.docUrl)}" target="_blank" rel="noopener">Xem văn bản gốc</a>`:""}</div>${adminPanel(c)}`;
     else if(c.nn&&S.mode==="nn"){body=subtabs(c)+nnBar()+`<div class="hint" style="margin-top:12px">Nguồn: ${esc(c.nn.doc)}. Kết quả chỉ để tham khảo, hãy đối chiếu văn bản gốc.</div>`}
     else{const multi=!!c.rule,pls=[...new Set(d.pl)].filter(Boolean).sort();
-      body=subtabs(c)+`<div class="step"><span class="n">1</span>Gõ tên đường cần tra</div>
+      body=subtabs(c)+(c.warn?`<div class="tip" style="background:var(--bad-soft);color:var(--bad);border:1px solid var(--bad);margin:0 0 12px">⚠️ ${c.warn}</div>`:"")+`<div class="step"><span class="n">1</span>Gõ tên đường cần tra</div>
       <input class="big" data-a="q" placeholder="Ví dụ: nguyen hue  (không cần gõ dấu)" value="${esc(S.q)}" autocomplete="off">
       <div class="step"><span class="n">2</span>Nhập diện tích để tính ra tiền <small>(không bắt buộc)</small></div>
       <input class="big" data-a="dt" inputmode="decimal" placeholder="Ví dụ: 80  (đơn vị là m²)" value="${esc(S.dt)}">
