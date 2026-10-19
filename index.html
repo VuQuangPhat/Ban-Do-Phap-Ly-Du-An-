@@ -477,7 +477,9 @@ const CSS=`.gdx{font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Robot
 .gdx .tab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.gdx .tab small{opacity:.8;font-weight:400}
 .gdx input,.gdx select{font:inherit;padding:6px 10px;min-height:36px;border:1.5px solid #c9d1de;border-radius:12px;background:#fff;color:inherit;max-width:100%}
 .gdx input[type=checkbox]{min-height:0;width:18px;height:18px;vertical-align:-4px;margin-right:8px}
-.gdx input:focus,.gdx select:focus,.gdx summary:focus{outline:3px solid #93b4ff;border-color:#2563eb}
+.gdx input:focus,.gdx select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.gdx summary:focus,.gdx button:focus,.gdx [data-gi]:focus,.gdx [data-dg]:focus{outline:none}
+.gdx summary:focus-visible,.gdx button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .gdx .big{width:100%;display:block;font-size:16px}
 .gdx .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}.gdx .hint{color:#4a5565;font-size:12.5px}
 .gdx .step{display:flex;align-items:center;gap:10px;font-weight:700;margin:10px 0 4px;font-size:15px}
