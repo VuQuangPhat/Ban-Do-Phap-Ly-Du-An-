@@ -665,7 +665,7 @@ function init(){
   const QS={};const QP={};
   function qhLoad(){const c=cur(),id=c.id;if(QP[id])return QP[id];
     QP[id]=(async()=>{try{const t=await (await fetch(c.qh.csv,{cache:"no-store"})).text();const rows=parseCSV(t).slice(1).filter(r=>r[0]&&r[1]);
-      const d=rows.map(r=>{const z=String(r[1]).split(/\s+[—–]\s+/);return{w:r[0],k:(z[0]||"").trim(),m:(z.slice(1).join(" — ")||"").trim(),p:parseFloat(String(r[2]||"").replace(",","."))||0,pg:r[3]||"",n:r[4]||"",i:fold(r[0]+" "+r[1])}});
+      const d=rows.map(r=>{const z=String(r[1]).split(/\s+[—–]\s+/);return{w:r[0],k:(z[0]||"").trim(),m:(z.slice(1).join(" — ")||"").trim(),p:parseFloat(String(r[2]||"").replace(",","."))||0,pg:r[3]||"",n:[r[4],r[5]].filter(Boolean).join(" · "),i:fold(r[0]+" "+r[1])}});
       QS[id]={d,w:[...new Set(d.map(x=>x.w))].sort((a,b)=>a.localeCompare(b,"vi"))}}catch(e){QS[id]={d:[],w:[],err:1}}})();return QP[id]}
   const QW=()=>QS[cur().id];
   function qhRows(){const q=fold(S.qq||"").trim().split(/\s+/).filter(Boolean),r=[];QW().d.forEach((x,i)=>{if(S.qw&&x.w!==S.qw)return;if(q.every(t=>x.i.includes(t)))r.push(i)});return r}
