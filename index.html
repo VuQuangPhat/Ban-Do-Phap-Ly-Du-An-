@@ -664,7 +664,7 @@ function init(){
   function subtabs(c){if(!c.nn&&!c.qh)return"";const b=(m,t,x)=>`<button class="mode ${S.mode===m?"on":""}" data-a="mode" data-m="${m}"><b>${t}</b><span>${x}</span></button>`;return `<div class="modes${c.qh?" m3":""}">${b("gia","Tra giá đất theo đường","Đất ở, thương mại dịch vụ, sản xuất kinh doanh")}${c.nn?b("nn","Đất nông nghiệp","Xem giá và tính tiền khi chuyển sang đất ở"):""}${c.qh?b("qh","Khu quy hoạch","Giá đất trong khu dân cư, khu tái định cư theo mặt cắt đường"):""}</div>`}
   const QS={};const QP={};
   function qhLoad(){const c=cur(),id=c.id;if(QP[id])return QP[id];
-    QP[id]=(async()=>{try{const t=await (await fetch(c.qh.csv,{cache:"no-store"})).text();const rows=parseCSV(t).slice(1).filter(r=>r[0]&&r[1]);
+    QP[id]=(async()=>{try{const rs=await fetch(c.qh.csv,{cache:"no-store"});const t=await rs.text();if(!rs.ok||/^\s*</.test(t))throw 0;const rows=parseCSV(t).slice(1).filter(r=>r[0]&&r[1]);
       const d=rows.map(r=>{const z=String(r[1]).split(/\s+[—–]\s+/);return{w:r[0],k:(z[0]||"").trim(),m:(z.slice(1).join(" — ")||"").trim(),p:parseFloat(String(r[2]||"").replace(",","."))||0,pg:r[3]||"",n:[r[4],r[5]].filter(Boolean).join(" · "),i:fold(r[0]+" "+r[1])}});
       QS[id]={d,w:[...new Set(d.map(x=>x.w))].sort((a,b)=>a.localeCompare(b,"vi"))}}catch(e){QS[id]={d:[],w:[],err:1}}})();return QP[id]}
   const QW=()=>QS[cur().id];
@@ -673,7 +673,7 @@ function init(){
     const A=parseFloat(String(S.dt).replace(",","."))||0;
     return `<div class="hint" style="margin:6px 0">${r.length.toLocaleString("vi-VN")} dòng${r.length>LM?` (hiển thị ${LM} dòng đầu, gõ thêm từ khóa để thu hẹp)`:""}</div>`+r.slice(0,LM).map(i=>{const x=QW().d[i];return `<div class="gdet" style="margin:6px 0"><b>${esc(x.k)}</b><div class="hint">${esc(x.w)}${x.m?" · "+esc(x.m):""}${x.pg?" · "+esc(x.pg):""}</div>${x.p?`<div><b style="font-size:17px">${fm(x.p*1000)} đ/m²</b>${A>0?` <span style="color:#0b6b3a;font-weight:700">= ${fm(Math.round(x.p*1000*A))} đ</span>`:""}</div>`:'<div class="hint">Chưa có giá trong dữ liệu, cần đối chiếu văn bản gốc.</div>'}${x.n?`<div class="hint">${esc(x.n)}</div>`:""}</div>`}).join("")}
   function qhBar(){const c=cur();if(!QW())return'<p class="hint">Đang tải bảng giá khu quy hoạch…</p>';
-    if(!QW().d.length)return `<div class="empty"><b>${esc(c.name)}</b>: giá khu quy hoạch đang được cập nhật hoặc chưa tải được.</div>`;
+    if(!QW().d.length)return `<div class="empty"><b>${esc(c.name)}</b>: giá khu quy hoạch chưa tải được (bảng tính chưa xuất bản tab này hoặc mạng lỗi). Hãy tải lại trang sau ít phút.</div>`;
     return `<div class="step"><span class="n">1</span>Chọn phường/xã (không bắt buộc)</div><select class="big" data-a="qhw"><option value="">Tất cả phường/xã</option>${QW().w.map(w=>`<option value="${esc(w)}" ${S.qw===w?"selected":""}>${esc(w)}</option>`).join("")}</select>
     <div class="step"><span class="n">2</span>Gõ tên khu quy hoạch hoặc mặt cắt đường</div><input class="big" data-a="qhq" placeholder="Ví dụ: tai dinh cu" value="${esc(S.qq||"")}" autocomplete="off">
     <div class="step"><span class="n">3</span>Nhập diện tích để tính ra tiền <small>(không bắt buộc)</small></div><input class="big" data-a="dt" inputmode="decimal" placeholder="Ví dụ: 80 (m²)" value="${esc(S.dt)}">
