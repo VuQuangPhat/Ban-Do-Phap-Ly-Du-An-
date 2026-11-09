@@ -257,6 +257,12 @@ details.adv[open] summary::before{content:"–"}
 .sub-h{font-family:var(--f-display);font-size:20px;letter-spacing:-.01em;margin:34px 0 4px}
 .warn,.note{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
 .warn{background:var(--bad-soft);color:var(--bad)} .note{background:var(--warn-soft);color:var(--warn)}
+.vf{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.vf span{opacity:.85}
+.vf-ok{background:var(--ok-soft);color:var(--ok)} .vf-part{background:var(--warn-soft);color:var(--warn)} .vf-low{background:var(--warn-soft);color:var(--warn)}
+.vf-note{font-size:12.5px}
+.warn,.note{overflow-wrap:anywhere}
+.vmore{margin-top:6px} .vmore summary{cursor:pointer;font-weight:600;text-decoration:underline;display:block;text-align:left;padding:2px 0;min-height:24px}
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(8,18,16,.45);z-index:40}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--surface);z-index:41;box-shadow:-12px 0 40px rgba(0,0,0,.2);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
@@ -1137,6 +1143,30 @@ function render(){
 /* ---------- ngăn kéo chi tiết ---------- */
 let SRC='dữ liệu dựng sẵn trong trang';
 let lastFocus=null;
+/* mức kiểm tra văn bản: đọc từ cột "Kiểm hiệu lực lần cuối" của Sheet */
+function verLevel(d){
+  const x=norm(d.kiem||'');if(!x)return 'unk';
+  const read=/da doc (toan van|ban goc)|da doi chieu ban goc|doc toan van/.test(x);
+  const no=/chua (doc|kiem|doi chieu)|thu cap|chua xac minh|chua ghi muc|mot phan/.test(x);
+  return read&&!no?'ok':(read?'part':'low');
+}
+function verHtml(d){
+  const lv=verLevel(d);if(lv==='unk')return '';
+  const T={ok:'Đã đọc toàn văn.',part:'Đã kiểm một phần.',low:'Nguồn thứ cấp, chưa đối chiếu toàn văn.'};
+  return '<div class="vf vf-'+lv+'"><b>'+T[lv]+'</b> <span>Kiểm lần cuối: '+esc(d.kiem)+'</span></div>';
+}
+function clampNote(t){
+  t=String(t||'');if(t.length<=240)return esc(t);
+  let cut=t.lastIndexOf('. ',220);if(cut<80)cut=t.lastIndexOf(' ',220);if(cut<80)cut=220;
+  return esc(t.slice(0,cut+1))+'<details class="vmore"><summary>Xem đầy đủ</summary>'+esc(t.slice(cut+1).trim())+'</details>';
+}
+function noteHtml(d){
+  if(!d.luuy)return '';
+  const lv=verLevel(d);
+  if(lv==='ok')return '<div class="vf vf-ok vf-note"><b>Ghi chú.</b> '+clampNote(d.luuy)+'</div>';
+  if(lv==='part')return '<div class="note"><b>Lưu ý.</b> '+clampNote(d.luuy)+'</div>';
+  return '<div class="warn"><b>Cần kiểm tra.</b> '+clampNote(d.luuy)+'</div>';
+}
 function openDoc(id){
   const d=byId[id];if(!d)return;lastFocus=document.activeElement;
   const nd=(d.noidung||[]).filter(x=>norm(x)!==norm(d.summary));
@@ -1151,7 +1181,7 @@ function openDoc(id){
   '<div class="d-body">'+
   '<div class="d-actions"><a class="btn primary" href="'+esc(d.link)+'" target="_blank" rel="noopener">Xem văn bản <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/></svg></a><button class="btn" id="cpLink">Sao chép link</button><button class="btn" id="shLink">Chia sẻ</button></div>'+
   (replDocs(d).length&&(d._st==='expired'||d.thaybo)?'<div class="note"><b>'+(d._st==='expired'?'Đã hết hiệu lực.':'Có văn bản thay thế.')+'</b> Văn bản thay thế hoặc sửa đổi: '+replDocs(d).map(x=>x.doc?'<button class="tag" style="border:0;cursor:pointer" data-open="'+esc(x.doc.id)+'">'+esc(x.so)+'</button>':'<span class="tag">'+esc(x.so)+' (chưa có trong thư viện)</span>').join(' ')+'</div>':'')+
-  (d.luuy?'<div class="warn"><b>Cần kiểm tra.</b> '+esc(d.luuy)+'</div>':'')+(d._mau?'<div class="note"><b>Có mẫu biểu.</b> Văn bản này ban hành hoặc quy định mẫu để điền. Mở văn bản gốc, tìm phần Phụ lục hoặc Mẫu số, để lấy mẫu.</div>':'')+
+  verHtml(d)+noteHtml(d)+(d._mau?'<div class="note"><b>Có mẫu biểu.</b> Văn bản này ban hành hoặc quy định mẫu để điền. Mở văn bản gốc, tìm phần Phụ lục hoặc Mẫu số, để lấy mẫu.</div>':'')+
   (d.tasks.length?'<div><h4>Dùng cho công việc</h4><div class="tags">'+d.tasks.map(t=>'<button class="tag" style="border:0;cursor:pointer" data-goto="'+t+'">'+esc(taskById[t].name)+'</button>').join('')+'</div></div>':'')+
   '<div><h4>Tóm tắt</h4><p>'+esc(d.summary||d.ten)+'</p></div>'+
   (nd.length?'<div><h4>Nội dung chính</h4><ul>'+nd.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'')+
@@ -1237,7 +1267,7 @@ function parseCSV(t){
   if(f!==''||row.length){row.push(f);rows.push(row)}
   return rows;
 }
-const HEAD={'so hieu':'so','loai':'type','ten van ban':'ten','tom tat':'summary','ngay ban hanh':'ngaybh','ngay hieu luc':'hl','ngay het hieu luc':'het','thay the / sua doi':'thaythe','co quan ban hanh':'cq','link van ban goc':'link','link doc':'doc','link pdf':'pdf','link tieng anh':'en','cong viec 1':'t1','cong viec 2':'t2','cong viec 3':'t3','linh vuc':'lv','co mau bieu':'mau','noi dung chinh':'nd','diem moi':'dm','luu y':'luuy','bi thay the boi':'thaybo','an':'an'};
+const HEAD={'so hieu':'so','loai':'type','ten van ban':'ten','tom tat':'summary','ngay ban hanh':'ngaybh','ngay hieu luc':'hl','ngay het hieu luc':'het','thay the / sua doi':'thaythe','co quan ban hanh':'cq','link van ban goc':'link','link doc':'doc','link pdf':'pdf','link tieng anh':'en','cong viec 1':'t1','cong viec 2':'t2','cong viec 3':'t3','linh vuc':'lv','co mau bieu':'mau','noi dung chinh':'nd','diem moi':'dm','luu y':'luuy','bi thay the boi':'thaybo','kiem hieu luc lan cuoi':'kiem','an':'an'};
 function rowsToDocs(rows){
   if(rows.length<2)return [];
   const idx={};rows[0].forEach((h,i)=>{const k=HEAD[norm(h).trim()];if(k)idx[k]=i});
@@ -1254,7 +1284,7 @@ function rowsToDocs(rows){
     let law=lName[norm(g(r,'lv')).trim()]||'khac';
     if(law==='khac'&&!LAWS.khac)LAWS.khac={title:'Lĩnh vực khác',desc:'Văn bản chưa xếp vào lĩnh vực cụ thể.'};
     const lines=v=>v?v.split(/\n+/).map(x=>x.trim()).filter(Boolean):[];
-    out.push({id:'s'+i+'-'+norm(g(r,'so')).replace(/[^a-z0-9]+/g,''),law,type:g(r,'type')||'Văn bản',ten:g(r,'ten')||g(r,'so'),so:g(r,'so'),ngaybh:g(r,'ngaybh'),hl:g(r,'hl'),het:g(r,'het'),thaythe:g(r,'thaythe'),link:g(r,'link'),summary:g(r,'summary')||g(r,'ten'),noidung:lines(g(r,'nd')),diemmoi:lines(g(r,'dm')),doc:g(r,'doc'),pdf:g(r,'pdf'),en:g(r,'en'),cq:g(r,'cq'),tasks,mau:yes(g(r,'mau')),luuy:g(r,'luuy'),thaybo:g(r,'thaybo')});
+    out.push({id:'s'+i+'-'+norm(g(r,'so')).replace(/[^a-z0-9]+/g,''),law,type:g(r,'type')||'Văn bản',ten:g(r,'ten')||g(r,'so'),so:g(r,'so'),ngaybh:g(r,'ngaybh'),hl:g(r,'hl'),het:g(r,'het'),thaythe:g(r,'thaythe'),link:g(r,'link'),summary:g(r,'summary')||g(r,'ten'),noidung:lines(g(r,'nd')),diemmoi:lines(g(r,'dm')),doc:g(r,'doc'),pdf:g(r,'pdf'),en:g(r,'en'),cq:g(r,'cq'),tasks,mau:yes(g(r,'mau')),luuy:g(r,'luuy'),thaybo:g(r,'thaybo'),kiem:g(r,'kiem')});
   });
   return out;
 }
