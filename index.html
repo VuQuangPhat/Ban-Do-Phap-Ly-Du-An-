@@ -1163,7 +1163,7 @@ function clampNote(t){
 function noteHtml(d){
   if(!d.luuy)return '';
   const lv=verLevel(d);
-  if(lv==='ok')return '<div class="vf vf-ok vf-note"><b>Ghi chú.</b> '+clampNote(d.luuy)+'</div>';
+  if(lv==='ok')return '';
   if(lv==='part')return '<div class="note"><b>Lưu ý.</b> '+clampNote(d.luuy)+'</div>';
   return '<div class="warn"><b>Cần kiểm tra.</b> '+clampNote(d.luuy)+'</div>';
 }
