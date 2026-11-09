@@ -1151,7 +1151,7 @@ function verLevel(d){
   return read&&!no?'ok':(read?'part':'low');
 }
 function verHtml(d){
-  const lv=verLevel(d);if(lv==='unk')return '';
+  const lv=verLevel(d);if(lv==='unk'||lv==='ok')return '';
   const T={ok:'Đã đọc toàn văn.',part:'Đã kiểm một phần.',low:'Nguồn thứ cấp, chưa đối chiếu toàn văn.'};
   return '<div class="vf vf-'+lv+'"><b>'+T[lv]+'</b> <span>Kiểm lần cuối: '+esc(d.kiem)+'</span></div>';
 }
